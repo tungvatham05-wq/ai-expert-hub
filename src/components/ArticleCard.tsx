@@ -1,8 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import type { FeedArticle } from "@/lib/articles";
+import { isBookmarked, toggleBookmark } from "@/lib/bookmarks";
+import Avatar from "@/components/Avatar";
 
 function BookmarkIcon({ filled }: { filled: boolean }) {
   return (
@@ -41,17 +43,49 @@ const sourceBadgeClasses: Record<FeedArticle["source"], string> = {
   "HF Papers": "bg-yellow-400/15 text-yellow-300",
 };
 
+type LangMode = "vi" | "en" | "both";
+
+const LANG_OPTIONS: { value: LangMode; label: string }[] = [
+  { value: "vi", label: "VI" },
+  { value: "en", label: "EN" },
+  { value: "both", label: "Cả hai" },
+];
+
+const SUMMARY_PREVIEW_COUNT = 3;
+const TEXT_PREVIEW_LEN = 240;
+
+function truncateText(text: string, maxLen: number): string {
+  if (text.length <= maxLen) return text;
+  return text.slice(0, maxLen).trimEnd() + "…";
+}
+
 export default function ArticleCard({ article }: { article: FeedArticle }) {
-  const [bookmarked, setBookmarked] = useState(article.bookmarked);
-  const [showOriginal, setShowOriginal] = useState(false);
+  const [bookmarked, setBookmarked] = useState(false);
+  const [lang, setLang] = useState<LangMode>("vi");
+  const [expanded, setExpanded] = useState(false);
+
+  useEffect(() => {
+    setBookmarked(isBookmarked(article.id));
+  }, [article.id]);
+
+  const isLong =
+    lang === "vi"
+      ? article.summaryPoints.length > SUMMARY_PREVIEW_COUNT || article.actionableTakeaway.length > TEXT_PREVIEW_LEN
+      : lang === "en"
+        ? article.originalSummary.length > TEXT_PREVIEW_LEN || article.actionableTakeaway.length > TEXT_PREVIEW_LEN
+        : false;
 
   return (
     <article className="rounded-2xl border border-border bg-panel p-4 transition-colors hover:border-faint/40 sm:p-5">
       {/* Header row */}
       <div className="flex items-start gap-3">
-        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-panel-hover text-xs font-semibold text-ink">
-          {article.expertInitials}
-        </div>
+        <Avatar
+          src={article.avatarUrl}
+          alt={article.expertName}
+          initials={article.expertInitials}
+          size={36}
+          textClassName="text-xs"
+        />
 
         <div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-2 gap-y-1 text-sm">
           <span className="font-medium text-ink">{article.expertName}</span>
@@ -79,7 +113,7 @@ export default function ArticleCard({ article }: { article: FeedArticle }) {
           <button
             type="button"
             aria-label={bookmarked ? "Bỏ lưu bài viết" : "Lưu bài viết"}
-            onClick={() => setBookmarked((v) => !v)}
+            onClick={() => setBookmarked(toggleBookmark(article.id))}
             className={`transition-colors ${bookmarked ? "text-accent" : "text-faint hover:text-ink"}`}
           >
             <BookmarkIcon filled={bookmarked} />
@@ -87,30 +121,73 @@ export default function ArticleCard({ article }: { article: FeedArticle }) {
         </div>
       </div>
 
-      {/* Title */}
-      <h2 className="mt-3 text-base font-semibold leading-snug text-accent sm:text-lg">
-        {showOriginal ? article.titleOriginal : article.titleVi}
-      </h2>
-
-      {/* Body */}
-      {showOriginal ? (
-        <p className="mt-2 text-sm leading-relaxed text-muted">{article.originalSummary}</p>
+      {/* Title + body */}
+      {lang === "both" ? (
+        <div className="mt-3 grid gap-4 sm:grid-cols-2">
+          <div className="sm:border-r sm:border-border sm:pr-4">
+            <p className="text-[11px] font-semibold uppercase tracking-wide text-faint">Tiếng Việt</p>
+            <h2 className="mt-1 text-base font-semibold leading-snug text-accent sm:text-lg">{article.titleVi}</h2>
+            <ul className="mt-2 space-y-1.5">
+              {article.summaryPoints.map((point, i) => (
+                <li key={i} className="flex gap-2 text-sm leading-relaxed text-muted">
+                  <span className="mt-1 text-faint">›</span>
+                  <span>{point}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+          <div>
+            <p className="text-[11px] font-semibold uppercase tracking-wide text-faint">English</p>
+            <h2 className="mt-1 text-base font-semibold leading-snug text-accent sm:text-lg">
+              {article.titleOriginal}
+            </h2>
+            <p className="mt-2 text-sm leading-relaxed text-muted">{article.originalSummary}</p>
+          </div>
+        </div>
       ) : (
-        <ul className="mt-2 space-y-1.5">
-          {article.summaryPoints.map((point, i) => (
-            <li key={i} className="flex gap-2 text-sm leading-relaxed text-muted">
-              <span className="mt-1 text-faint">›</span>
-              <span>{point}</span>
-            </li>
-          ))}
-        </ul>
+        <>
+          <h2 className="mt-3 text-base font-semibold leading-snug text-accent sm:text-lg">
+            {lang === "en" ? article.titleOriginal : article.titleVi}
+          </h2>
+          {lang === "en" ? (
+            <p className="mt-2 text-sm leading-relaxed text-muted">
+              {expanded ? article.originalSummary : truncateText(article.originalSummary, TEXT_PREVIEW_LEN)}
+            </p>
+          ) : (
+            <ul className="mt-2 space-y-1.5">
+              {(expanded ? article.summaryPoints : article.summaryPoints.slice(0, SUMMARY_PREVIEW_COUNT)).map(
+                (point, i) => (
+                  <li key={i} className="flex gap-2 text-sm leading-relaxed text-muted">
+                    <span className="mt-1 text-faint">›</span>
+                    <span>{point}</span>
+                  </li>
+                )
+              )}
+            </ul>
+          )}
+        </>
       )}
 
       {/* Actionable takeaway */}
       <div className="mt-3 rounded-xl border border-accent/20 bg-accent-soft p-3">
         <p className="text-xs font-semibold uppercase tracking-wide text-accent">💡 Ứng dụng thực tế</p>
-        <p className="mt-1 text-sm leading-relaxed text-ink/90">{article.actionableTakeaway}</p>
+        <p className="mt-1 text-sm leading-relaxed text-ink/90">
+          {lang === "both" || expanded
+            ? article.actionableTakeaway
+            : truncateText(article.actionableTakeaway, TEXT_PREVIEW_LEN)}
+        </p>
       </div>
+
+      {/* Expand/collapse long content */}
+      {isLong && (
+        <button
+          type="button"
+          onClick={() => setExpanded((v) => !v)}
+          className="mt-2 text-xs font-medium text-accent hover:underline"
+        >
+          {expanded ? "Thu gọn ↑" : "Xem thêm ↓"}
+        </button>
+      )}
 
       {/* AI tools */}
       {article.aiTools.length > 0 && (
@@ -140,14 +217,21 @@ export default function ArticleCard({ article }: { article: FeedArticle }) {
           ))}
         </div>
 
-        <button
-          type="button"
-          onClick={() => setShowOriginal((v) => !v)}
-          className="flex shrink-0 items-center gap-1.5 rounded-full border border-border px-3 py-1.5 text-xs font-medium text-muted transition-colors hover:border-faint/50 hover:text-ink"
-        >
+        <div className="flex shrink-0 items-center gap-1 rounded-full border border-border p-1 text-xs font-medium text-muted">
           <LanguageIcon />
-          {showOriginal ? "Xem bản dịch (VI)" : "Xem bản gốc (EN)"}
-        </button>
+          {LANG_OPTIONS.map((opt) => (
+            <button
+              key={opt.value}
+              type="button"
+              onClick={() => setLang(opt.value)}
+              className={`rounded-full px-2.5 py-1 transition-colors ${
+                lang === opt.value ? "bg-accent text-canvas-2" : "hover:text-ink"
+              }`}
+            >
+              {opt.label}
+            </button>
+          ))}
+        </div>
       </div>
     </article>
   );

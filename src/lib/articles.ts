@@ -7,11 +7,14 @@ export interface FeedArticle {
   expertId: string;
   expertName: string;
   expertInitials: string;
+  avatarUrl: string | null;
   source: SourcePlatform;
   sourceLabel: string;
+  sourceUrl: string;
   time: string;
   isNew: boolean;
   isHot: boolean;
+  isDeepDive: boolean;
   titleVi: string;
   titleOriginal: string;
   summaryPoints: string[];
@@ -26,6 +29,7 @@ export interface ExpertSummary {
   id: string;
   name: string;
   initials: string;
+  avatarUrl: string | null;
   articleCount: number;
 }
 
@@ -41,10 +45,25 @@ export interface TrendingTopic {
   count: number;
 }
 
+export interface DigestArticle {
+  id: string;
+  titleVi: string;
+  expertName: string;
+  sourceUrl: string;
+  time: string;
+}
+
+export interface TodayDigest {
+  dateLabel: string;
+  todayCount: number;
+  recent: DigestArticle[];
+}
+
 export interface FeedFilterParams {
   expert?: string;
   source?: string;
   tag?: string;
+  filter?: string;
 }
 
 const PLATFORM_DOT_COLORS: Record<SourcePlatform, string> = {
@@ -84,6 +103,9 @@ const SLUG_TO_PLATFORM: Record<string, SourcePlatform> = Object.fromEntries(
 
 const NEW_THRESHOLD_MS = 24 * 60 * 60 * 1000;
 
+// Bài viết có nội dung gốc dài (>= ngưỡng này) được xếp vào bộ lọc "Chuyên sâu".
+const DEEP_DIVE_THRESHOLD = 5000;
+
 interface ArticleRow {
   id: string;
   source_url: string;
@@ -95,7 +117,7 @@ interface ArticleRow {
   published_at: string;
   created_at: string;
   expert_id: string;
-  experts: { id: string; name: string } | null;
+  experts: { id: string; name: string; avatar_url: string | null } | null;
   article_tags: { tags: { name: string } | null }[];
   article_ai_tools: { ai_tools: { name: string } | null }[];
 }
@@ -174,7 +196,7 @@ export async function getAllArticles(): Promise<FeedArticle[]> {
       published_at,
       created_at,
       expert_id,
-      experts ( id, name ),
+      experts ( id, name, avatar_url ),
       article_tags ( tags ( name ) ),
       article_ai_tools ( ai_tools ( name ) )
     `
@@ -194,11 +216,14 @@ export async function getAllArticles(): Promise<FeedArticle[]> {
       expertId: row.expert_id,
       expertName,
       expertInitials: getInitials(expertName),
+      avatarUrl: row.experts?.avatar_url ?? null,
       source: platform,
       sourceLabel: PLATFORM_SOURCE_LABELS[platform],
+      sourceUrl: row.source_url,
       time: formatRelativeTime(row.published_at),
       isNew: Date.now() - new Date(row.created_at).getTime() < NEW_THRESHOLD_MS,
       isHot: false,
+      isDeepDive: row.original_content.length >= DEEP_DIVE_THRESHOLD,
       titleVi: row.title_vi,
       titleOriginal: row.original_title,
       summaryPoints: parseSummaryPoints(row.summary_main_points),
@@ -217,6 +242,7 @@ export function filterArticles(articles: FeedArticle[], filters: FeedFilterParam
     if (filters.expert && a.expertId !== filters.expert) return false;
     if (platform && a.source !== platform) return false;
     if (filters.tag && !a.tags.includes(filters.tag)) return false;
+    if (filters.filter === "deep" && !a.isDeepDive) return false;
     return true;
   });
 }
@@ -232,6 +258,7 @@ export function getExpertCounts(articles: FeedArticle[]): ExpertSummary[] {
         id: a.expertId,
         name: a.expertName,
         initials: a.expertInitials,
+        avatarUrl: a.avatarUrl,
         articleCount: 1,
       });
     }
@@ -245,14 +272,12 @@ export function getSourceCounts(articles: FeedArticle[]): SourceSummary[] {
   for (const a of articles) {
     counts.set(a.source, (counts.get(a.source) ?? 0) + 1);
   }
-  return order
-    .filter((platform) => counts.has(platform))
-    .map((platform) => ({
-      id: PLATFORM_SLUGS[platform],
-      name: platform,
-      count: counts.get(platform)!,
-      dotColor: PLATFORM_DOT_COLORS[platform],
-    }));
+  return order.map((platform) => ({
+    id: PLATFORM_SLUGS[platform],
+    name: platform,
+    count: counts.get(platform) ?? 0,
+    dotColor: PLATFORM_DOT_COLORS[platform],
+  }));
 }
 
 export function getTrendingTags(articles: FeedArticle[], limit = 8): TrendingTopic[] {
@@ -266,6 +291,32 @@ export function getTrendingTags(articles: FeedArticle[], limit = 8): TrendingTop
     .sort((a, b) => b[1] - a[1])
     .slice(0, limit)
     .map(([tag, count]) => ({ tag, count }));
+}
+
+export function getDeepDiveCount(articles: FeedArticle[]): number {
+  return articles.filter((a) => a.isDeepDive).length;
+}
+
+// "Bản tin hôm nay": số bài mới trong 24h gần nhất + danh sách bài mới nhất (đã sắp xếp sẵn theo published_at).
+export function getTodayDigest(articles: FeedArticle[], limit = 3): TodayDigest {
+  const dateLabel = new Date().toLocaleDateString("vi-VN", {
+    weekday: "long",
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+  });
+
+  return {
+    dateLabel,
+    todayCount: articles.filter((a) => a.isNew).length,
+    recent: articles.slice(0, limit).map((a) => ({
+      id: a.id,
+      titleVi: a.titleVi,
+      expertName: a.expertName,
+      sourceUrl: a.sourceUrl,
+      time: a.time,
+    })),
+  };
 }
 
 // Bật/tắt một bộ lọc, giữ nguyên các bộ lọc khác đang áp dụng.

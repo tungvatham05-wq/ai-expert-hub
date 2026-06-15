@@ -1,5 +1,7 @@
 import Link from "next/link";
 import { buildFilterHref, type ExpertSummary, type FeedFilterParams, type SourceSummary } from "@/lib/articles";
+import Avatar from "@/components/Avatar";
+import SavedCount from "@/components/SavedCount";
 
 function SearchIcon() {
   return (
@@ -14,11 +16,12 @@ interface SidebarProps {
   experts: ExpertSummary[];
   sources: SourceSummary[];
   total: number;
+  deepCount: number;
   active: FeedFilterParams;
 }
 
-export default function Sidebar({ experts, sources, total, active }: SidebarProps) {
-  const isAllActive = !active.expert && !active.source && !active.tag;
+export default function Sidebar({ experts, sources, total, deepCount, active }: SidebarProps) {
+  const isAllActive = !active.expert && !active.source && !active.tag && !active.filter;
 
   return (
     <div className="flex h-full flex-col gap-6 overflow-y-auto p-4">
@@ -46,6 +49,36 @@ export default function Sidebar({ experts, sources, total, active }: SidebarProp
               Tất cả
             </span>
             <span className="text-xs text-faint">{total}</span>
+          </Link>
+
+          <Link
+            href={buildFilterHref(active, "filter", "deep")}
+            className={`flex w-full items-center justify-between rounded-lg px-3 py-2 text-sm transition-colors ${
+              active.filter === "deep"
+                ? "bg-accent-soft font-medium text-accent"
+                : "text-muted hover:bg-panel-hover hover:text-ink"
+            }`}
+          >
+            <span className="flex items-center gap-2">
+              <span>📚</span>
+              Chuyên sâu
+            </span>
+            <span className="text-xs text-faint">{deepCount}</span>
+          </Link>
+
+          <Link
+            href={buildFilterHref(active, "filter", "saved")}
+            className={`flex w-full items-center justify-between rounded-lg px-3 py-2 text-sm transition-colors ${
+              active.filter === "saved"
+                ? "bg-accent-soft font-medium text-accent"
+                : "text-muted hover:bg-panel-hover hover:text-ink"
+            }`}
+          >
+            <span className="flex items-center gap-2">
+              <span>🔖</span>
+              Đã lưu
+            </span>
+            <SavedCount />
           </Link>
         </div>
       </div>
@@ -89,9 +122,7 @@ export default function Sidebar({ experts, sources, total, active }: SidebarProp
               }`}
             >
               <span className="flex items-center gap-2 truncate">
-                <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-panel-hover text-[11px] font-semibold text-ink">
-                  {e.initials}
-                </span>
+                <Avatar src={e.avatarUrl} alt={e.name} initials={e.initials} size={28} textClassName="text-[11px]" />
                 <span className="truncate">{e.name}</span>
               </span>
               <span className="shrink-0 text-xs text-faint">{e.articleCount}</span>
