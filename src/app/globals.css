@@ -1,26 +1,47 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
+@theme {
+  --color-canvas: #0a0c11;
+  --color-canvas-2: #06070b;
+  --color-panel: #12151c;
+  --color-panel-hover: #1a1f29;
+  --color-border: #222834;
+  --color-ink: #e8eaed;
+  --color-muted: #95a0b3;
+  --color-faint: #5b6477;
+  --color-accent: #f0a050;
+  --color-accent-soft: #f0a05026;
+  --color-hot: #f4593e;
+  --color-hot-soft: #f4593e26;
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+html {
+  color-scheme: dark;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--color-canvas);
+  color: var(--color-ink);
+  font-family: var(--font-sans), Arial, Helvetica, sans-serif;
+}
+
+/* Thin, unobtrusive scrollbars to match the dark, "app-like" feel */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-panel-hover) transparent;
+}
+
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--color-panel-hover);
+  border-radius: 9999px;
 }
