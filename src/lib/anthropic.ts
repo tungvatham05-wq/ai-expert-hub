@@ -96,5 +96,25 @@ export async function analyzeArticle(title: string, content: string): Promise<Ar
   if (!toolUse || toolUse.type !== "tool_use") {
     throw new Error("Claude không trả về kết quả phân tích hợp lệ");
   }
-  return toolUse.input as ArticleAnalysis;
+
+  const input = toolUse.input as Record<string, unknown>;
+  return {
+    title_vi: String(input.title_vi ?? ""),
+    summary_points: toStringArray(input.summary_points),
+    actionable_takeaway: String(input.actionable_takeaway ?? ""),
+    ai_tools: toStringArray(input.ai_tools),
+    tags: toStringArray(input.tags),
+  };
+}
+
+// Haiku đôi khi trả về các trường array dưới dạng chuỗi "<item>...</item>"
+// thay vì JSON array đúng schema — chuẩn hoá lại về string[] cho cả hai trường hợp.
+function toStringArray(value: unknown): string[] {
+  if (Array.isArray(value)) return value.map(String);
+  if (typeof value === "string") {
+    const items = [...value.matchAll(/<item>([\s\S]*?)<\/item>/g)].map((m) => m[1].trim());
+    if (items.length > 0) return items;
+    return value.trim() ? [value.trim()] : [];
+  }
+  return [];
 }
