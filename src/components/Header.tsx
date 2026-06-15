@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, type ReactNode } from "react";
+import { useSearch } from "@/components/SearchProvider";
 
 function MenuIcon() {
   return (
@@ -60,6 +61,7 @@ export default function Header({
   const [activeTab, setActiveTab] = useState("Feed");
   const [lang, setLang] = useState<"vi" | "en">("vi");
   const [openDrawer, setOpenDrawer] = useState<"left" | "right" | null>(null);
+  const { query, setQuery } = useSearch();
 
   return (
     <>
@@ -78,10 +80,27 @@ export default function Header({
           <Logo />
 
           {/* Desktop search */}
-          <label className="ml-2 hidden flex-1 max-w-md items-center gap-2 rounded-xl border border-border bg-panel px-3 py-2 text-sm text-faint lg:flex">
+          <label className="ml-2 hidden flex-1 max-w-md items-center gap-2 rounded-xl border border-border bg-panel px-3 py-2 text-sm text-faint focus-within:border-accent/50 lg:flex">
             <SearchIcon />
-            <span className="flex-1">Tìm chuyên gia, chủ đề, từ khoá…</span>
-            <kbd className="rounded-md border border-border px-1.5 py-0.5 text-[10px] text-faint">⌘K</kbd>
+            <input
+              type="search"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Tìm chuyên gia, chủ đề, từ khoá…"
+              className="flex-1 bg-transparent text-ink placeholder:text-faint focus:outline-none"
+            />
+            {query ? (
+              <button
+                type="button"
+                onClick={() => setQuery("")}
+                aria-label="Xóa tìm kiếm"
+                className="text-faint hover:text-ink"
+              >
+                ✕
+              </button>
+            ) : (
+              <kbd className="rounded-md border border-border px-1.5 py-0.5 text-[10px] text-faint">⌘K</kbd>
+            )}
           </label>
 
           {/* Desktop nav tabs */}
@@ -131,6 +150,30 @@ export default function Header({
           >
             <TrendingIcon />
           </button>
+        </div>
+
+        {/* Mobile search */}
+        <div className="border-t border-border px-4 pb-3 pt-2 lg:hidden">
+          <label className="flex items-center gap-2 rounded-xl border border-border bg-panel px-3 py-2 text-sm text-faint focus-within:border-accent/50">
+            <SearchIcon />
+            <input
+              type="search"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Tìm chuyên gia, chủ đề, từ khoá…"
+              className="flex-1 bg-transparent text-ink placeholder:text-faint focus:outline-none"
+            />
+            {query && (
+              <button
+                type="button"
+                onClick={() => setQuery("")}
+                aria-label="Xóa tìm kiếm"
+                className="text-faint hover:text-ink"
+              >
+                ✕
+              </button>
+            )}
+          </label>
         </div>
       </header>
 

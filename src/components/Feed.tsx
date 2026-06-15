@@ -4,6 +4,8 @@ import { useEffect, useState } from "react";
 import ArticleCard from "@/components/ArticleCard";
 import type { FeedArticle, FeedFilterParams } from "@/lib/articles";
 import { BOOKMARKS_EVENT, getBookmarkIds } from "@/lib/bookmarks";
+import { matchesSearch } from "@/lib/search";
+import { useSearch } from "@/components/SearchProvider";
 
 interface FeedProps {
   articles: FeedArticle[];
@@ -13,6 +15,7 @@ interface FeedProps {
 
 export default function Feed({ articles, total, active }: FeedProps) {
   const isSaved = active.filter === "saved";
+  const { query } = useSearch();
   const [savedIds, setSavedIds] = useState<Set<string> | null>(null);
 
   useEffect(() => {
@@ -27,11 +30,16 @@ export default function Feed({ articles, total, active }: FeedProps) {
     };
   }, [isSaved]);
 
-  const visibleArticles = isSaved
+  const filteredArticles = isSaved
     ? articles.filter((a) => savedIds?.has(a.id))
     : articles;
 
+  const visibleArticles = query.trim()
+    ? filteredArticles.filter((a) => matchesSearch(a, query))
+    : filteredArticles;
+
   const isFiltered = articles.length !== total;
+  const isSearching = query.trim().length > 0;
 
   return (
     <div className="flex flex-col gap-4">
@@ -39,11 +47,13 @@ export default function Feed({ articles, total, active }: FeedProps) {
         <div>
           <h1 className="text-xl font-semibold text-ink sm:text-2xl">Dòng tin</h1>
           <p className="mt-0.5 text-sm text-faint">
-            {isSaved
-              ? `${visibleArticles.length} bài đã lưu`
-              : isFiltered
-                ? `${articles.length} / ${total} nội dung`
-                : `${total} nội dung mới nhất`}
+            {isSearching
+              ? `${visibleArticles.length} kết quả cho "${query.trim()}"`
+              : isSaved
+                ? `${visibleArticles.length} bài đã lưu`
+                : isFiltered
+                  ? `${articles.length} / ${total} nội dung`
+                  : `${total} nội dung mới nhất`}
           </p>
         </div>
       </div>
@@ -56,7 +66,11 @@ export default function Feed({ articles, total, active }: FeedProps) {
         </div>
       ) : visibleArticles.length === 0 ? (
         <p className="rounded-2xl border border-dashed border-border bg-panel p-8 text-center text-sm text-faint">
-          {isSaved ? "Bạn chưa lưu bài viết nào." : "Không có bài viết nào phù hợp với bộ lọc hiện tại."}
+          {isSearching
+            ? `Không tìm thấy bài viết nào khớp với "${query.trim()}".`
+            : isSaved
+              ? "Bạn chưa lưu bài viết nào."
+              : "Không có bài viết nào phù hợp với bộ lọc hiện tại."}
         </p>
       ) : (
         <div className="flex flex-col gap-4">
