@@ -73,9 +73,15 @@ export interface ArticleAnalysis {
 
 export async function analyzeArticle(title: string, content: string): Promise<ArticleAnalysis> {
   const message = await anthropic.messages.create({
-    model: "claude-sonnet-4-6",
+    model: "claude-haiku-4-5",
     max_tokens: 1500,
-    system: SYSTEM_PROMPT,
+    system: [
+      {
+        type: "text",
+        text: SYSTEM_PROMPT,
+        cache_control: { type: "ephemeral" },
+      },
+    ],
     tools: [ANALYSIS_TOOL],
     tool_choice: { type: "tool", name: "save_article_analysis" },
     messages: [
