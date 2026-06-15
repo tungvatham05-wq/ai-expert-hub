@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import type { Article } from "@/lib/mock-data";
+import Link from "next/link";
+import type { FeedArticle } from "@/lib/articles";
 
 function BookmarkIcon({ filled }: { filled: boolean }) {
   return (
@@ -30,7 +31,7 @@ function LanguageIcon() {
   );
 }
 
-const sourceBadgeClasses: Record<Article["source"], string> = {
+const sourceBadgeClasses: Record<FeedArticle["source"], string> = {
   X: "bg-panel-hover text-ink",
   Bluesky: "bg-sky-400/15 text-sky-300",
   Blog: "bg-emerald-400/15 text-emerald-300",
@@ -40,7 +41,7 @@ const sourceBadgeClasses: Record<Article["source"], string> = {
   "HF Papers": "bg-yellow-400/15 text-yellow-300",
 };
 
-export default function ArticleCard({ article }: { article: Article }) {
+export default function ArticleCard({ article }: { article: FeedArticle }) {
   const [bookmarked, setBookmarked] = useState(article.bookmarked);
   const [showOriginal, setShowOriginal] = useState(false);
 
@@ -129,13 +130,13 @@ export default function ArticleCard({ article }: { article: Article }) {
       <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
         <div className="flex flex-wrap gap-2">
           {article.tags.map((tag) => (
-            <button
+            <Link
               key={tag}
-              type="button"
+              href={`/?tag=${encodeURIComponent(tag)}`}
               className="rounded-full px-2 py-1 text-xs text-faint transition-colors hover:bg-panel-hover hover:text-accent"
             >
               {tag}
-            </button>
+            </Link>
           ))}
         </div>
 

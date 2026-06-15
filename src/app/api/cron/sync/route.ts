@@ -7,6 +7,10 @@ import { analyzeArticle } from "@/lib/anthropic";
 // khi một nguồn mới được thêm vào có hàng chục bài cũ trong feed.
 const MAX_ITEMS_PER_SOURCE = 5;
 
+// Tận dụng tối đa thời gian chạy cho phép trên Vercel Hobby (mặc định chỉ 10s,
+// không đủ cho nhiều lệnh gọi Claude liên tiếp).
+export const maxDuration = 60;
+
 export async function GET(req: Request) {
   const authHeader = req.headers.get("authorization");
   if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {

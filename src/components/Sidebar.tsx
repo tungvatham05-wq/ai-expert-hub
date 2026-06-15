@@ -1,4 +1,5 @@
-import { experts, filters, sources } from "@/lib/mock-data";
+import Link from "next/link";
+import { buildFilterHref, type ExpertSummary, type FeedFilterParams, type SourceSummary } from "@/lib/articles";
 
 function SearchIcon() {
   return (
@@ -9,13 +10,16 @@ function SearchIcon() {
   );
 }
 
-const filterIcons: Record<string, string> = {
-  all: "🔥",
-  deep: "📚",
-  saved: "🔖",
-};
+interface SidebarProps {
+  experts: ExpertSummary[];
+  sources: SourceSummary[];
+  total: number;
+  active: FeedFilterParams;
+}
 
-export default function Sidebar() {
+export default function Sidebar({ experts, sources, total, active }: SidebarProps) {
+  const isAllActive = !active.expert && !active.source && !active.tag;
+
   return (
     <div className="flex h-full flex-col gap-6 overflow-y-auto p-4">
       {/* Search */}
@@ -29,23 +33,20 @@ export default function Sidebar() {
       <div>
         <p className="px-1 text-xs font-semibold uppercase tracking-wider text-faint">Bộ lọc</p>
         <div className="mt-2 space-y-1">
-          {filters.map((f) => (
-            <button
-              key={f.id}
-              type="button"
-              className={`flex w-full items-center justify-between rounded-lg px-3 py-2 text-sm transition-colors ${
-                f.id === "all"
-                  ? "bg-accent-soft font-medium text-accent"
-                  : "text-muted hover:bg-panel-hover hover:text-ink"
-              }`}
-            >
-              <span className="flex items-center gap-2">
-                <span>{filterIcons[f.id]}</span>
-                {f.label}
-              </span>
-              <span className="text-xs text-faint">{f.count}</span>
-            </button>
-          ))}
+          <Link
+            href="/"
+            className={`flex w-full items-center justify-between rounded-lg px-3 py-2 text-sm transition-colors ${
+              isAllActive
+                ? "bg-accent-soft font-medium text-accent"
+                : "text-muted hover:bg-panel-hover hover:text-ink"
+            }`}
+          >
+            <span className="flex items-center gap-2">
+              <span>🔥</span>
+              Tất cả
+            </span>
+            <span className="text-xs text-faint">{total}</span>
+          </Link>
         </div>
       </div>
 
@@ -54,17 +55,21 @@ export default function Sidebar() {
         <p className="px-1 text-xs font-semibold uppercase tracking-wider text-faint">Nguồn</p>
         <div className="mt-2 space-y-1">
           {sources.map((s) => (
-            <button
+            <Link
               key={s.id}
-              type="button"
-              className="flex w-full items-center justify-between rounded-lg px-3 py-2 text-sm text-muted transition-colors hover:bg-panel-hover hover:text-ink"
+              href={buildFilterHref(active, "source", s.id)}
+              className={`flex w-full items-center justify-between rounded-lg px-3 py-2 text-sm transition-colors ${
+                active.source === s.id
+                  ? "bg-accent-soft font-medium text-accent"
+                  : "text-muted hover:bg-panel-hover hover:text-ink"
+              }`}
             >
               <span className="flex items-center gap-2">
                 <span className={`h-2 w-2 rounded-full ${s.dotColor}`} />
                 {s.name}
               </span>
               <span className="text-xs text-faint">{s.count}</span>
-            </button>
+            </Link>
           ))}
         </div>
       </div>
@@ -74,10 +79,14 @@ export default function Sidebar() {
         <p className="px-1 text-xs font-semibold uppercase tracking-wider text-faint">Chuyên gia</p>
         <div className="mt-2 space-y-1">
           {experts.map((e) => (
-            <button
+            <Link
               key={e.id}
-              type="button"
-              className="flex w-full items-center justify-between rounded-lg px-3 py-2 text-sm text-muted transition-colors hover:bg-panel-hover hover:text-ink"
+              href={buildFilterHref(active, "expert", e.id)}
+              className={`flex w-full items-center justify-between rounded-lg px-3 py-2 text-sm transition-colors ${
+                active.expert === e.id
+                  ? "bg-accent-soft font-medium text-accent"
+                  : "text-muted hover:bg-panel-hover hover:text-ink"
+              }`}
             >
               <span className="flex items-center gap-2 truncate">
                 <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-panel-hover text-[11px] font-semibold text-ink">
@@ -86,7 +95,7 @@ export default function Sidebar() {
                 <span className="truncate">{e.name}</span>
               </span>
               <span className="shrink-0 text-xs text-faint">{e.articleCount}</span>
-            </button>
+            </Link>
           ))}
         </div>
       </div>
