@@ -3,6 +3,7 @@ import Parser from "rss-parser";
 interface RawFeedItem {
   title?: string;
   link?: string;
+  id?: string;           // Atom <id> — used by arXiv & GitHub Atom feeds instead of <link>
   content?: string;
   contentSnippet?: string;
   summary?: string;
@@ -51,14 +52,14 @@ export async function fetchFeed(feedUrl: string): Promise<FeedItem[]> {
   const feed = await parser.parseURL(rssUrl);
 
   return (feed.items ?? [])
-    .filter((item) => item.link)
+    .filter((item) => item.link || item.id)
     .map((item) => {
       const raw =
         item.contentEncoded || item.content || item.mediaDescription || item.contentSnippet || item.summary || "";
 
       return {
         title: (item.title ?? "").trim(),
-        link: item.link!,
+        link: (item.link || item.id)!,
         content: stripHtml(raw),
         publishedAt: item.isoDate ?? item.pubDate ?? new Date().toISOString(),
       };

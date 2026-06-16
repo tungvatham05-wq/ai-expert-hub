@@ -24,6 +24,16 @@ function BookmarkIcon({ filled }: { filled: boolean }) {
   );
 }
 
+function ExternalLinkIcon() {
+  return (
+    <svg viewBox="0 0 24 24" className="h-3 w-3" fill="none" stroke="currentColor" strokeWidth={2}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
+      <polyline strokeLinecap="round" strokeLinejoin="round" points="15 3 21 3 21 9" />
+      <line strokeLinecap="round" strokeLinejoin="round" x1="10" y1="14" x2="21" y2="3" />
+    </svg>
+  );
+}
+
 function LanguageIcon() {
   return (
     <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth={1.8}>
@@ -126,7 +136,11 @@ export default function ArticleCard({ article }: { article: FeedArticle }) {
         <div className="mt-3 grid gap-4 sm:grid-cols-2">
           <div className="sm:border-r sm:border-border sm:pr-4">
             <p className="text-[11px] font-semibold uppercase tracking-wide text-faint">Tiếng Việt</p>
-            <h2 className="mt-1 text-base font-semibold leading-snug text-accent sm:text-lg">{article.titleVi}</h2>
+            <h2 className="mt-1 text-base font-semibold leading-snug text-accent sm:text-lg">
+              <a href={article.sourceUrl} target="_blank" rel="noopener noreferrer" className="hover:underline">
+                {article.titleVi}
+              </a>
+            </h2>
             <ul className="mt-2 space-y-1.5">
               {article.summaryPoints.map((point, i) => (
                 <li key={i} className="flex gap-2 text-sm leading-relaxed text-muted">
@@ -139,7 +153,9 @@ export default function ArticleCard({ article }: { article: FeedArticle }) {
           <div>
             <p className="text-[11px] font-semibold uppercase tracking-wide text-faint">English</p>
             <h2 className="mt-1 text-base font-semibold leading-snug text-accent sm:text-lg">
-              {article.titleOriginal}
+              <a href={article.sourceUrl} target="_blank" rel="noopener noreferrer" className="hover:underline">
+                {article.titleOriginal}
+              </a>
             </h2>
             <p className="mt-2 text-sm leading-relaxed text-muted">{article.originalSummary}</p>
           </div>
@@ -147,7 +163,9 @@ export default function ArticleCard({ article }: { article: FeedArticle }) {
       ) : (
         <>
           <h2 className="mt-3 text-base font-semibold leading-snug text-accent sm:text-lg">
-            {lang === "en" ? article.titleOriginal : article.titleVi}
+            <a href={article.sourceUrl} target="_blank" rel="noopener noreferrer" className="hover:underline">
+              {lang === "en" ? article.titleOriginal : article.titleVi}
+            </a>
           </h2>
           {lang === "en" ? (
             <p className="mt-2 text-sm leading-relaxed text-muted">
@@ -216,6 +234,16 @@ export default function ArticleCard({ article }: { article: FeedArticle }) {
             </Link>
           ))}
         </div>
+
+        <a
+          href={article.sourceUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="flex shrink-0 items-center gap-1 text-xs text-faint transition-colors hover:text-accent"
+        >
+          <ExternalLinkIcon />
+          Bản gốc
+        </a>
 
         <div className="flex shrink-0 items-center gap-1 rounded-full border border-border p-1 text-xs font-medium text-muted">
           <LanguageIcon />
