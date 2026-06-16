@@ -21,6 +21,19 @@ const parser: Parser<unknown, RawFeedItem> = new Parser({
   },
 });
 
+// Cấu hình instance RSSHub (self-hosted) qua env var RSSHUB_URL.
+// Mặc định dùng rsshub.app (public) nếu không có env.
+const RSSHUB_BASE = (process.env.RSSHUB_URL ?? "https://rsshub.app").replace(/\/$/, "");
+
+// Chuyển URL trang profile X/Twitter → RSS feed qua RSSHub.
+// Lưu URL gốc (vd: https://x.com/drjimfan) trong expert_sources.url —
+// cron job tự convert, không cần thêm bảng riêng.
+function toRssUrl(url: string): string {
+  const xHandle = url.match(/^https?:\/\/(?:x|twitter)\.com\/([A-Za-z0-9_]{1,50})\/?$/)?.[1];
+  if (xHandle) return `${RSSHUB_BASE}/twitter/user/${xHandle}`;
+  return url;
+}
+
 export interface FeedItem {
   title: string;
   link: string;
@@ -31,9 +44,11 @@ export interface FeedItem {
 /**
  * Đọc một feed RSS/Atom bất kỳ (Substack, Blog, YouTube channel feed...).
  * rss-parser tự nhận diện định dạng, nên không cần xử lý riêng theo platform.
+ * Tự động convert URL profile X/Twitter → RSSHub feed.
  */
 export async function fetchFeed(feedUrl: string): Promise<FeedItem[]> {
-  const feed = await parser.parseURL(feedUrl);
+  const rssUrl = toRssUrl(feedUrl);
+  const feed = await parser.parseURL(rssUrl);
 
   return (feed.items ?? [])
     .filter((item) => item.link)
