@@ -87,7 +87,7 @@ export async function GET(req: Request) {
 }
 
 async function linkTags(articleId: string, tagNames: string[]) {
-  for (const name of tagNames) {
+  for (const name of [...new Set(tagNames)]) {
     const slug = name.replace(/^#/, "").toLowerCase().replace(/\s+/g, "-");
     const { data: tag } = await supabaseAdmin
       .from("tags")
@@ -95,20 +95,26 @@ async function linkTags(articleId: string, tagNames: string[]) {
       .select()
       .single();
     if (tag) {
-      await supabaseAdmin.from("article_tags").insert({ article_id: articleId, tag_id: tag.id });
+      await supabaseAdmin.from("article_tags").upsert(
+        { article_id: articleId, tag_id: tag.id },
+        { onConflict: "article_id,tag_id", ignoreDuplicates: true }
+      );
     }
   }
 }
 
 async function linkAiTools(articleId: string, toolNames: string[]) {
-  for (const name of toolNames) {
+  for (const name of [...new Set(toolNames)]) {
     const { data: tool } = await supabaseAdmin
       .from("ai_tools")
       .upsert({ name }, { onConflict: "name" })
       .select()
       .single();
     if (tool) {
-      await supabaseAdmin.from("article_ai_tools").insert({ article_id: articleId, ai_tool_id: tool.id });
+      await supabaseAdmin.from("article_ai_tools").upsert(
+        { article_id: articleId, ai_tool_id: tool.id },
+        { onConflict: "article_id,ai_tool_id", ignoreDuplicates: true }
+      );
     }
   }
 }
