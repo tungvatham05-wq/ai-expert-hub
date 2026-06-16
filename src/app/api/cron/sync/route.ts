@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase";
 import { fetchFeed } from "@/lib/sources";
 import { analyzeArticle } from "@/lib/anthropic";
+import { isAiRelated } from "@/lib/prefilter";
 
 // Chỉ xử lý N bài mới nhất mỗi nguồn / mỗi lần chạy, tránh tốn API
 // khi một nguồn mới được thêm vào có hàng chục bài cũ trong feed.
@@ -48,6 +49,9 @@ export async function GET(req: Request) {
         .maybeSingle();
       if (existing) continue;
 
+      // Pre-filter: skip non-AI/tech content before calling Claude (saves tokens)
+      if (!isAiRelated(item.title, item.content)) continue;
+
       let analysis;
       try {
         analysis = await analyzeArticle(item.title, item.content);
@@ -55,6 +59,8 @@ export async function GET(req: Request) {
         errors.push(`[analyze] ${item.link}: ${(err as Error).message}`);
         continue;
       }
+      // Haiku fallback: flagged as non-AI/tech content
+      if (!analysis) continue;
 
       const { data: article, error: insertError } = await supabaseAdmin
         .from("articles")

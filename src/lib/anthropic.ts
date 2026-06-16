@@ -40,7 +40,12 @@ Nhiệm vụ: phân tích và biên tập lại cho độc giả Việt Nam, the
 NGUYÊN TẮC CHUNG:
 - Giọng văn chuyên nghiệp nhưng gần gũi, dễ hiểu với người không chuyên công nghệ.
 - Không bịa thông tin ngoài bài gốc (trừ actionable_takeaway được phép suy luận hợp lý).
-- Luôn trả lời bằng cách gọi tool \`save_article_analysis\` với đầy đủ các trường.`;
+- Luôn trả lời bằng cách gọi tool \`save_article_analysis\` với đầy đủ các trường.
+
+TRƯỜNG HỢP ĐẶC BIỆT — BỎ QUA BÀI VIẾT:
+Nếu bài viết hoàn toàn KHÔNG liên quan đến AI/công nghệ (ví dụ: đời sống cá nhân,
+thú cưng, du lịch, ẩm thực, thể thao...) — hãy gọi tool với \`should_skip: true\`
+và để tất cả các trường còn lại rỗng. Hệ thống sẽ tự động bỏ qua, không lưu DB.`;
 
 const ANALYSIS_TOOL = {
   name: "save_article_analysis",
@@ -48,6 +53,10 @@ const ANALYSIS_TOOL = {
   input_schema: {
     type: "object" as const,
     properties: {
+      should_skip: {
+        type: "boolean" as const,
+        description: "true nếu bài viết không liên quan AI/tech — hệ thống sẽ bỏ qua, không lưu DB",
+      },
       title_vi: { type: "string" as const },
       summary_points: {
         type: "array" as const,
@@ -71,7 +80,11 @@ export interface ArticleAnalysis {
   tags: string[];
 }
 
-export async function analyzeArticle(title: string, content: string): Promise<ArticleAnalysis> {
+/**
+ * Returns null when the article should be skipped (Haiku flagged should_skip: true).
+ * Callers must handle null by skipping DB insert and NOT counting as an error.
+ */
+export async function analyzeArticle(title: string, content: string): Promise<ArticleAnalysis | null> {
   const message = await anthropic.messages.create({
     model: "claude-haiku-4-5",
     max_tokens: 1500,
@@ -98,6 +111,10 @@ export async function analyzeArticle(title: string, content: string): Promise<Ar
   }
 
   const input = toolUse.input as Record<string, unknown>;
+
+  // Haiku fallback: bài không liên quan AI/tech
+  if (input.should_skip === true) return null;
+
   return {
     title_vi: String(input.title_vi ?? ""),
     summary_points: toStringArray(input.summary_points),
