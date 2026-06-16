@@ -126,7 +126,8 @@ export async function analyzeArticle(title: string, content: string): Promise<Ar
 
 // Haiku đôi khi trả về các trường array dưới dạng chuỗi "<item>...</item>"
 // thay vì JSON array đúng schema — chuẩn hoá lại về string[] cho cả hai trường hợp.
-function toStringArray(value: unknown): string[] {
+// Export để nhánh OpenAI (YouTube) dùng lại cùng logic chuẩn hoá.
+export function toStringArray(value: unknown): string[] {
   if (Array.isArray(value)) return value.map(String);
   if (typeof value === "string") {
     const items = [...value.matchAll(/<item>([\s\S]*?)<\/item>/g)].map((m) => m[1].trim());

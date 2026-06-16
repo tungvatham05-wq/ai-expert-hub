@@ -10,14 +10,16 @@ interface RawFeedItem {
   isoDate?: string;
   pubDate?: string;
   contentEncoded?: string;
-  mediaDescription?: string;
+  // YouTube Atom feed lồng phần mô tả trong <media:group><media:description>.
+  // rss-parser KHÔNG hỗ trợ path lồng "a/b", nên phải map cả media:group rồi tự bóc.
+  mediaGroup?: { "media:description"?: string[] };
 }
 
 const parser: Parser<unknown, RawFeedItem> = new Parser({
   customFields: {
     item: [
       ["content:encoded", "contentEncoded"],
-      ["media:group/media:description", "mediaDescription"],
+      ["media:group", "mediaGroup"],
     ],
   },
 });
@@ -54,8 +56,9 @@ export async function fetchFeed(feedUrl: string): Promise<FeedItem[]> {
   return (feed.items ?? [])
     .filter((item) => item.link || item.id)
     .map((item) => {
+      const mediaDescription = item.mediaGroup?.["media:description"]?.[0];
       const raw =
-        item.contentEncoded || item.content || item.mediaDescription || item.contentSnippet || item.summary || "";
+        item.contentEncoded || item.content || mediaDescription || item.contentSnippet || item.summary || "";
 
       // Social posts (Bluesky, X) may have no title — use first 180 chars of content.
       const title = (item.title || item.contentSnippet || item.summary || "").trim().slice(0, 180);

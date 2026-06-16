@@ -1,6 +1,8 @@
 import { supabaseAdmin } from "@/lib/supabase";
+import { detectPlatform, extractVideoId, type SourcePlatform } from "@/lib/platform";
 
-export type SourcePlatform = "X" | "Bluesky" | "Blog" | "YouTube" | "arXiv" | "GitHub" | "HF Papers";
+// Re-export để các module cũ vẫn `import { SourcePlatform } from "@/lib/articles"`.
+export type { SourcePlatform };
 
 export interface FeedArticle {
   id: string;
@@ -23,6 +25,10 @@ export interface FeedArticle {
   actionableTakeaway: string;
   aiTools: string[];
   bookmarked: boolean;
+  // Chỉ có giá trị với nguồn YouTube (null với các nguồn khác).
+  videoId: string | null;
+  thumbnailUrl: string | null;
+  durationSeconds: number | null;
 }
 
 export interface ExpertSummary {
@@ -117,19 +123,11 @@ interface ArticleRow {
   published_at: string;
   created_at: string;
   expert_id: string;
+  thumbnail_url: string | null;
+  duration_seconds: number | null;
   experts: { id: string; name: string; avatar_url: string | null } | null;
   article_tags: { tags: { name: string } | null }[];
   article_ai_tools: { ai_tools: { name: string } | null }[];
-}
-
-function detectPlatform(url: string): SourcePlatform {
-  if (/github\.com/i.test(url)) return "GitHub";
-  if (/(?:twitter|x)\.com/i.test(url)) return "X";
-  if (/bsky\.app/i.test(url)) return "Bluesky";
-  if (/youtube\.com|youtu\.be/i.test(url)) return "YouTube";
-  if (/arxiv\.org/i.test(url)) return "arXiv";
-  if (/huggingface\.co\/papers/i.test(url)) return "HF Papers";
-  return "Blog";
 }
 
 function getInitials(name: string): string {
@@ -196,6 +194,8 @@ export async function getAllArticles(): Promise<FeedArticle[]> {
       published_at,
       created_at,
       expert_id,
+      thumbnail_url,
+      duration_seconds,
       experts ( id, name, avatar_url ),
       article_tags ( tags ( name ) ),
       article_ai_tools ( ai_tools ( name ) )
@@ -232,6 +232,9 @@ export async function getAllArticles(): Promise<FeedArticle[]> {
       actionableTakeaway: row.summary_actionable,
       aiTools: row.article_ai_tools.map((t) => t.ai_tools?.name).filter((t): t is string => Boolean(t)),
       bookmarked: false,
+      videoId: platform === "YouTube" ? extractVideoId(row.source_url) : null,
+      thumbnailUrl: row.thumbnail_url,
+      durationSeconds: row.duration_seconds,
     };
   });
 }

@@ -1,7 +1,9 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase";
 import { fetchFeed } from "@/lib/sources";
-import { analyzeArticle } from "@/lib/anthropic";
+import { analyzeArticle, type ArticleAnalysis } from "@/lib/anthropic";
+import { detectPlatform } from "@/lib/platform";
+import { analyzeYouTubeItem, type YouTubeMeta } from "@/lib/youtube";
 import { isAiRelated } from "@/lib/prefilter";
 
 // Chỉ xử lý N bài mới nhất mỗi nguồn / mỗi lần chạy, tránh tốn API
@@ -49,17 +51,29 @@ export async function GET(req: Request) {
         .maybeSingle();
       if (existing) continue;
 
-      // Pre-filter: skip non-AI/tech content before calling Claude (saves tokens)
+      // Pre-filter: skip non-AI/tech content before calling any LLM (saves tokens)
       if (!isAiRelated(item.title, item.content)) continue;
 
-      let analysis;
+      // ĐỊNH TUYẾN MODEL theo nguồn tin (suy ra từ URL bài viết):
+      //   - YouTube            → OpenAI gpt-4o-mini (xử lý video theo mốc thời gian)
+      //   - Blog/Substack/khác → Claude Haiku (dịch + bóc tách chuyên sâu)
+      const platform = detectPlatform(item.link);
+
+      let analysis: ArticleAnalysis | null;
+      let videoMeta: YouTubeMeta | null = null;
       try {
-        analysis = await analyzeArticle(item.title, item.content);
+        if (platform === "YouTube") {
+          const result = await analyzeYouTubeItem(item.title, item.content, item.link);
+          analysis = result.analysis;
+          videoMeta = result.meta;
+        } else {
+          analysis = await analyzeArticle(item.title, item.content);
+        }
       } catch (err) {
-        errors.push(`[analyze] ${item.link}: ${(err as Error).message}`);
+        errors.push(`[analyze:${platform}] ${item.link}: ${(err as Error).message}`);
         continue;
       }
-      // Haiku fallback: flagged as non-AI/tech content
+      // Fallback: model gắn cờ nội dung không liên quan AI/tech → bỏ qua, không tính lỗi
       if (!analysis) continue;
 
       const { data: article, error: insertError } = await supabaseAdmin
@@ -74,6 +88,9 @@ export async function GET(req: Request) {
           summary_actionable: analysis.actionable_takeaway,
           published_at: item.publishedAt,
           status: "translated",
+          // Chỉ video YouTube mới có 2 trường này; bài khác để null.
+          thumbnail_url: videoMeta?.thumbnailUrl ?? null,
+          duration_seconds: videoMeta?.durationSeconds ?? null,
         })
         .select()
         .single();

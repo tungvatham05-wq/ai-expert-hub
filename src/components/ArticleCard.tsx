@@ -69,14 +69,78 @@ function truncateText(text: string, maxLen: number): string {
   return text.slice(0, maxLen).trimEnd() + "…";
 }
 
+// Nhãn thời lượng video: dưới 1 phút hiện "giây", dưới 1 giờ hiện "phút",
+// còn lại hiện "giờ phút" (tránh kiểu "0 phút" với video Short).
+function formatDuration(seconds: number): string {
+  if (seconds < 60) return `${seconds} giây`;
+  if (seconds < 3600) return `${Math.round(seconds / 60)} phút`;
+  const h = Math.floor(seconds / 3600);
+  const m = Math.round((seconds % 3600) / 60);
+  return m > 0 ? `${h} giờ ${m} phút` : `${h} giờ`;
+}
+
+// Bắt các mốc thời gian dạng [01:25] hoặc [12:05] (và cả [1:02:11]).
+const TIMESTAMP_RE = /\[(\d{1,2}):(\d{2})(?::(\d{2}))?\]/g;
+
+function timestampToSeconds(parts: string[]): number {
+  return parts.reduce((acc, p) => acc * 60 + parseInt(p, 10), 0);
+}
+
+// Thêm tham số nhảy giây vào URL video gốc (YouTube hiểu cả ?t= lẫn &t=).
+function seekUrl(videoUrl: string, seconds: number): string {
+  const sep = videoUrl.includes("?") ? "&" : "?";
+  return `${videoUrl}${sep}t=${seconds}s`;
+}
+
+/**
+ * Hiển thị text, tự phát hiện [Phút:Giây] và biến thành link cam bấm được —
+ * click sẽ mở video gốc và nhảy đến đúng giây. Khi videoUrl = null (nguồn không
+ * phải YouTube) thì trả về text nguyên vẹn, không tạo link.
+ */
+function TimestampText({ text, videoUrl }: { text: string; videoUrl: string | null }) {
+  if (!videoUrl) return <>{text}</>;
+
+  const nodes: React.ReactNode[] = [];
+  const re = new RegExp(TIMESTAMP_RE.source, "g");
+  let last = 0;
+  let key = 0;
+  let m: RegExpExecArray | null;
+
+  while ((m = re.exec(text)) !== null) {
+    if (m.index > last) nodes.push(text.slice(last, m.index));
+    const seconds = timestampToSeconds([m[1], m[2], m[3]].filter(Boolean) as string[]);
+    nodes.push(
+      <a
+        key={key++}
+        href={seekUrl(videoUrl, seconds)}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="font-medium text-orange-400 hover:underline"
+      >
+        {m[0]}
+      </a>
+    );
+    last = m.index + m[0].length;
+  }
+  if (last < text.length) nodes.push(text.slice(last));
+  return <>{nodes}</>;
+}
+
 export default function ArticleCard({ article }: { article: FeedArticle }) {
   const [bookmarked, setBookmarked] = useState(false);
   const [lang, setLang] = useState<LangMode>("vi");
   const [expanded, setExpanded] = useState(false);
+  const [showVideo, setShowVideo] = useState(false);
 
   useEffect(() => {
     setBookmarked(isBookmarked(article.id));
   }, [article.id]);
+
+  const isYouTube = article.source === "YouTube";
+  // Link gốc dùng cho các mốc thời gian bấm được (chỉ bật với YouTube).
+  const videoUrl = isYouTube ? article.sourceUrl : null;
+  const durationLabel =
+    article.durationSeconds != null ? `⏱️ ${formatDuration(article.durationSeconds)}` : null;
 
   const isLong =
     lang === "vi"
@@ -131,6 +195,53 @@ export default function ArticleCard({ article }: { article: FeedArticle }) {
         </div>
       </div>
 
+      {/* YouTube: thumbnail + thời lượng, bấm mới render iframe (tránh nặng trang khi tải) */}
+      {isYouTube && (article.thumbnailUrl || article.videoId) && (
+        <div className="mt-3">
+          {showVideo && article.videoId ? (
+            <div className="relative w-full overflow-hidden rounded-xl" style={{ aspectRatio: "16 / 9" }}>
+              <iframe
+                src={`https://www.youtube.com/embed/${article.videoId}?autoplay=1`}
+                title={article.titleVi}
+                className="absolute inset-0 h-full w-full"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                allowFullScreen
+              />
+            </div>
+          ) : (
+            <button
+              type="button"
+              onClick={() => setShowVideo(true)}
+              aria-label="Xem video tại chỗ"
+              className="group relative block w-full overflow-hidden rounded-xl border border-border"
+            >
+              {article.thumbnailUrl && (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={article.thumbnailUrl}
+                  alt={article.titleVi}
+                  loading="lazy"
+                  className="aspect-video w-full object-cover"
+                />
+              )}
+              <span className="absolute inset-0 flex items-center justify-center bg-black/20 transition-colors group-hover:bg-black/35">
+                <span className="flex h-12 w-12 items-center justify-center rounded-full bg-red-600 pl-1 text-xl text-white shadow-lg">
+                  ▶
+                </span>
+              </span>
+              <span className="absolute bottom-2 left-2 rounded-md bg-black/60 px-2 py-0.5 text-xs font-medium text-white">
+                Xem video tại chỗ
+              </span>
+              {durationLabel && (
+                <span className="absolute bottom-2 right-2 rounded-md bg-black/75 px-1.5 py-0.5 text-xs font-medium text-white">
+                  {durationLabel}
+                </span>
+              )}
+            </button>
+          )}
+        </div>
+      )}
+
       {/* Title + body */}
       {lang === "both" ? (
         <div className="mt-3 grid gap-4 sm:grid-cols-2">
@@ -145,7 +256,9 @@ export default function ArticleCard({ article }: { article: FeedArticle }) {
               {article.summaryPoints.map((point, i) => (
                 <li key={i} className="flex gap-2 text-sm leading-relaxed text-muted">
                   <span className="mt-1 text-faint">›</span>
-                  <span>{point}</span>
+                  <span>
+                    <TimestampText text={point} videoUrl={videoUrl} />
+                  </span>
                 </li>
               ))}
             </ul>
@@ -177,7 +290,9 @@ export default function ArticleCard({ article }: { article: FeedArticle }) {
                 (point, i) => (
                   <li key={i} className="flex gap-2 text-sm leading-relaxed text-muted">
                     <span className="mt-1 text-faint">›</span>
-                    <span>{point}</span>
+                    <span>
+                      <TimestampText text={point} videoUrl={videoUrl} />
+                    </span>
                   </li>
                 )
               )}
@@ -190,9 +305,14 @@ export default function ArticleCard({ article }: { article: FeedArticle }) {
       <div className="mt-3 rounded-xl border border-accent/20 bg-accent-soft p-3">
         <p className="text-xs font-semibold uppercase tracking-wide text-accent">💡 Ứng dụng thực tế</p>
         <p className="mt-1 text-sm leading-relaxed text-ink/90">
-          {lang === "both" || expanded
-            ? article.actionableTakeaway
-            : truncateText(article.actionableTakeaway, TEXT_PREVIEW_LEN)}
+          <TimestampText
+            text={
+              lang === "both" || expanded
+                ? article.actionableTakeaway
+                : truncateText(article.actionableTakeaway, TEXT_PREVIEW_LEN)
+            }
+            videoUrl={videoUrl}
+          />
         </p>
       </div>
 
