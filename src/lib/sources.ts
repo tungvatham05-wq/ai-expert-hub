@@ -57,8 +57,11 @@ export async function fetchFeed(feedUrl: string): Promise<FeedItem[]> {
       const raw =
         item.contentEncoded || item.content || item.mediaDescription || item.contentSnippet || item.summary || "";
 
+      // Social posts (Bluesky, X) may have no title — use first 180 chars of content.
+      const title = (item.title || item.contentSnippet || item.summary || "").trim().slice(0, 180);
+
       return {
-        title: (item.title ?? "").trim(),
+        title,
         link: (item.link || item.id)!,
         content: stripHtml(raw),
         publishedAt: item.isoDate ?? item.pubDate ?? new Date().toISOString(),
