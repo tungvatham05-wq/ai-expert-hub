@@ -131,7 +131,7 @@ export default function ArticleCard({ article }: { article: FeedArticle }) {
   const [bookmarked, setBookmarked] = useState(false);
   const [lang, setLang] = useState<LangMode>("vi");
   const [expanded, setExpanded] = useState(false);
-  const [showVideo, setShowVideo] = useState(false);
+  const [isPlaying, setIsPlaying] = useState(false);
   const { openForArticle } = useChat();
 
   useEffect(() => {
@@ -197,53 +197,27 @@ export default function ArticleCard({ article }: { article: FeedArticle }) {
         </div>
       </div>
 
-      {/* YouTube: thumbnail + thời lượng, bấm mới render iframe (tránh nặng trang khi tải) */}
-      {isYouTube && (article.thumbnailUrl || article.videoId) && (
-        <div className="mt-3">
-          {showVideo && article.videoId ? (
-            <div className="relative w-full overflow-hidden rounded-xl" style={{ aspectRatio: "16 / 9" }}>
-              <iframe
-                src={`https://www.youtube.com/embed/${article.videoId}?autoplay=1`}
-                title={article.titleVi}
-                className="absolute inset-0 h-full w-full"
-                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                allowFullScreen
-              />
-            </div>
-          ) : (
-            <button
-              type="button"
-              onClick={() => setShowVideo(true)}
-              aria-label="Xem video tại chỗ"
-              className="group relative block w-full overflow-hidden rounded-xl border border-border"
-            >
-              {article.thumbnailUrl && (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  src={article.thumbnailUrl}
-                  alt={article.titleVi}
-                  loading="lazy"
-                  className="aspect-video w-full object-cover"
-                />
-              )}
-              <span className="absolute inset-0 flex items-center justify-center bg-black/20 transition-colors group-hover:bg-black/35">
-                <span className="flex h-12 w-12 items-center justify-center rounded-full bg-red-600 pl-1 text-xl text-white shadow-lg">
-                  ▶
-                </span>
-              </span>
-              <span className="absolute bottom-2 left-2 rounded-md bg-black/60 px-2 py-0.5 text-xs font-medium text-white">
-                Xem video tại chỗ
-              </span>
-              {durationLabel && (
-                <span className="absolute bottom-2 right-2 rounded-md bg-black/75 px-1.5 py-0.5 text-xs font-medium text-white">
-                  {durationLabel}
-                </span>
-              )}
-            </button>
-          )}
+      {/* ĐANG PHÁT: iframe full-width lên trên cùng, nội dung dồn xuống dưới (1 cột) */}
+      {isYouTube && isPlaying && article.videoId && (
+        <div className="mt-3 overflow-hidden rounded-lg border border-border">
+          <iframe
+            src={`https://www.youtube.com/embed/${article.videoId}?autoplay=1`}
+            title={article.titleVi}
+            className="aspect-video w-full"
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+            allowFullScreen
+          />
         </div>
       )}
 
+      {/* CHƯA PHÁT: card YouTube chia 2 cột (nội dung 70% | thumbnail 30%), mobile xếp dọc.
+          Khi đang phát hoặc nguồn khác → 1 cột bình thường. */}
+      <div
+        className={
+          isYouTube && !isPlaying ? "mt-3 flex flex-col-reverse gap-4 sm:flex-row sm:items-start" : undefined
+        }
+      >
+        <div className={isYouTube && !isPlaying ? "min-w-0 flex-1" : "contents"}>
       {/* Title + body */}
       {lang === "both" ? (
         <div className="mt-3 grid gap-4 sm:grid-cols-2">
@@ -328,6 +302,44 @@ export default function ArticleCard({ article }: { article: FeedArticle }) {
           {expanded ? "Thu gọn ↑" : "Xem thêm ↓"}
         </button>
       )}
+        </div>
+
+        {/* Cột phải: thumbnail YouTube thu nhỏ (mobile: lên trên, cao tối đa 160px).
+            Bấm vào → phát inline (chuyển sang khung iframe full-width ở trên). */}
+        {isYouTube && !isPlaying && (article.thumbnailUrl || article.videoId) && (
+          <div className="shrink-0 sm:w-[30%]">
+            <button
+              type="button"
+              onClick={(e) => {
+                e.preventDefault();
+                setIsPlaying(true);
+              }}
+              aria-label="Phát video tại chỗ"
+              className="group relative block w-full overflow-hidden rounded-lg border border-border"
+            >
+              {article.thumbnailUrl && (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={article.thumbnailUrl}
+                  alt={article.titleVi}
+                  loading="lazy"
+                  className="h-40 w-full object-cover sm:h-auto sm:aspect-video"
+                />
+              )}
+              <span className="absolute inset-0 flex items-center justify-center bg-black/20 transition-colors group-hover:bg-black/40">
+                <span className="flex h-11 w-11 items-center justify-center rounded-full bg-black/60 pl-0.5 text-lg text-white shadow-lg ring-1 ring-white/40 transition-transform group-hover:scale-110">
+                  ▶
+                </span>
+              </span>
+              {durationLabel && (
+                <span className="absolute bottom-1 right-1 rounded bg-black/80 px-1.5 py-0.5 text-[11px] font-medium text-white">
+                  {durationLabel}
+                </span>
+              )}
+            </button>
+          </div>
+        )}
+      </div>
 
       {/* AI tools */}
       {article.aiTools.length > 0 && (

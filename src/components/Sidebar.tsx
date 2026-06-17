@@ -3,15 +3,6 @@ import { buildFilterHref, type ExpertSummary, type FeedFilterParams, type Source
 import Avatar from "@/components/Avatar";
 import SavedCount from "@/components/SavedCount";
 
-function SearchIcon() {
-  return (
-    <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth={1.8}>
-      <circle cx="11" cy="11" r="7" />
-      <path strokeLinecap="round" d="M21 21l-4.3-4.3" />
-    </svg>
-  );
-}
-
 interface SidebarProps {
   experts: ExpertSummary[];
   sources: SourceSummary[];
@@ -25,13 +16,6 @@ export default function Sidebar({ experts, sources, total, deepCount, active }: 
 
   return (
     <div className="flex h-full flex-col gap-6 overflow-y-auto p-4">
-      {/* Search */}
-      <label className="flex items-center gap-2 rounded-xl border border-border bg-canvas px-3 py-2.5 text-sm text-faint">
-        <SearchIcon />
-        <span className="flex-1 truncate">Tìm chuyên gia, chủ đề, từ khoá…</span>
-        <kbd className="rounded-md border border-border px-1.5 py-0.5 text-[10px] text-faint">⌘K</kbd>
-      </label>
-
       {/* Filters */}
       <div>
         <p className="px-1 text-xs font-semibold uppercase tracking-wider text-faint">Bộ lọc</p>
