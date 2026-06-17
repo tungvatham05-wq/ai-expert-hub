@@ -81,6 +81,17 @@ export default function ChatWidget() {
   const [loadingMsgs, setLoadingMsgs] = useState(false);
 
   const scrollRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLTextAreaElement>(null);
+
+  // Tự giãn ô nhập theo nội dung (1 dòng → tối đa MAX_INPUT_HEIGHT px thì cuộn trong).
+  const MAX_INPUT_HEIGHT = 128; // khớp max-h-32 của textarea
+  useEffect(() => {
+    const el = inputRef.current;
+    if (!el) return;
+    el.style.height = "auto";
+    el.style.height = `${Math.min(el.scrollHeight, MAX_INPUT_HEIGHT)}px`;
+    el.style.overflowY = el.scrollHeight > MAX_INPUT_HEIGHT ? "auto" : "hidden";
+  }, [input]);
 
   // fetch helper: tự gắn header mật khẩu Admin
   const api = useCallback(
@@ -423,6 +434,7 @@ export default function ChatWidget() {
                     <div className="border-t border-border p-3">
                       <div className="flex items-end gap-2 rounded-xl border border-border bg-panel px-3 py-2 focus-within:border-accent/50">
                         <textarea
+                          ref={inputRef}
                           value={input}
                           onChange={(e) => setInput(e.target.value)}
                           onKeyDown={onKeyDown}
