@@ -26,6 +26,17 @@ const nextConfig: NextConfig = {
         hostname: "pbs.twimg.com",
         pathname: "/**",
       },
+      // Ảnh avatar kênh YouTube (yt3.ggpht.com / yt3.googleusercontent.com)
+      {
+        protocol: "https",
+        hostname: "yt3.ggpht.com",
+        pathname: "/**",
+      },
+      {
+        protocol: "https",
+        hostname: "yt3.googleusercontent.com",
+        pathname: "/**",
+      },
     ],
   },
 };
