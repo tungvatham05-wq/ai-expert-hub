@@ -3,7 +3,9 @@ import Sidebar from "@/components/Sidebar";
 import RightSidebar from "@/components/RightSidebar";
 import Feed from "@/components/Feed";
 import BottomNav from "@/components/BottomNav";
+import ChatWidget from "@/components/ChatWidget";
 import { SearchProvider } from "@/components/SearchProvider";
+import { ChatProvider } from "@/components/ChatProvider";
 import {
   getAllArticles,
   filterArticles,
@@ -32,6 +34,7 @@ export default async function Home({
 
   return (
     <SearchProvider>
+     <ChatProvider>
       <div className="min-h-screen bg-canvas text-ink">
         <Header
           sidebar={
@@ -74,7 +77,9 @@ export default async function Home({
         </div>
 
         <BottomNav />
+        <ChatWidget />
       </div>
+     </ChatProvider>
     </SearchProvider>
   );
 }

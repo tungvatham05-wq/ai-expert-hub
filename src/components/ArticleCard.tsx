@@ -5,6 +5,7 @@ import Link from "next/link";
 import type { FeedArticle } from "@/lib/articles";
 import { isBookmarked, toggleBookmark } from "@/lib/bookmarks";
 import Avatar from "@/components/Avatar";
+import { useChat } from "@/components/ChatProvider";
 
 function BookmarkIcon({ filled }: { filled: boolean }) {
   return (
@@ -131,6 +132,7 @@ export default function ArticleCard({ article }: { article: FeedArticle }) {
   const [lang, setLang] = useState<LangMode>("vi");
   const [expanded, setExpanded] = useState(false);
   const [showVideo, setShowVideo] = useState(false);
+  const { openForArticle } = useChat();
 
   useEffect(() => {
     setBookmarked(isBookmarked(article.id));
@@ -354,6 +356,14 @@ export default function ArticleCard({ article }: { article: FeedArticle }) {
             </Link>
           ))}
         </div>
+
+        <button
+          type="button"
+          onClick={() => openForArticle({ id: article.id, title: article.titleVi })}
+          className="flex shrink-0 items-center gap-1 text-xs font-medium text-faint transition-colors hover:text-accent"
+        >
+          💬 Hỏi về bài này
+        </button>
 
         <a
           href={article.sourceUrl}
