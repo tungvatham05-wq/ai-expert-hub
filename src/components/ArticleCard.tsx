@@ -1,11 +1,13 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState, useSyncExternalStore } from "react";
 import Link from "next/link";
 import type { FeedArticle } from "@/lib/articles";
-import { isBookmarked, toggleBookmark } from "@/lib/bookmarks";
+import type { PodcastVoice } from "@/lib/podcast";
+import { isBookmarked, toggleBookmark, subscribeBookmarks } from "@/lib/bookmarks";
 import Avatar from "@/components/Avatar";
 import { useChat } from "@/components/ChatProvider";
+import { useSettings } from "@/components/SettingsProvider";
 
 function BookmarkIcon({ filled }: { filled: boolean }) {
   return (
@@ -128,15 +130,52 @@ function TimestampText({ text, videoUrl }: { text: string; videoUrl: string | nu
 }
 
 export default function ArticleCard({ article }: { article: FeedArticle }) {
-  const [bookmarked, setBookmarked] = useState(false);
+  // Bookmark đọc từ localStorage qua store (đồng bộ giữa các card, không setState-trong-effect).
+  const bookmarked = useSyncExternalStore(
+    subscribeBookmarks,
+    () => isBookmarked(article.id),
+    () => false
+  );
   const [lang, setLang] = useState<LangMode>("vi");
   const [expanded, setExpanded] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
+  // Podcast: lazy generate + cache theo giọng (nam/nữ). URL cache sẵn từ server.
+  const [podcastUrls, setPodcastUrls] = useState<Record<PodcastVoice, string | null>>({
+    male: article.podcastUrl,
+    female: article.podcastUrlFemale,
+  });
+  const [activeVoice, setActiveVoice] = useState<PodcastVoice | null>(null);
+  const [loadingVoice, setLoadingVoice] = useState<PodcastVoice | null>(null);
+  const [podcastError, setPodcastError] = useState<string | null>(null);
   const { openForArticle } = useChat();
+  const { podcastVoice } = useSettings();
 
-  useEffect(() => {
-    setBookmarked(isBookmarked(article.id));
-  }, [article.id]);
+  // Gọi API sinh/đọc podcast theo giọng. Lần đầu có thể mất vài chục giây (kịch bản + TTS),
+  // các lần sau trả URL đã cache gần như tức thì. Bấm lại giọng đã có → chỉ chuyển player.
+  async function loadPodcast(voice: PodcastVoice) {
+    if (loadingVoice) return;
+    if (podcastUrls[voice]) {
+      setActiveVoice(voice);
+      return;
+    }
+    setLoadingVoice(voice);
+    setPodcastError(null);
+    try {
+      const res = await fetch(`/api/podcast/${article.id}?voice=${voice}`);
+      const data = await res.json();
+      if (!res.ok || !data.ok) throw new Error(data.error ?? "Không tạo được podcast");
+      setPodcastUrls((prev) => ({ ...prev, [voice]: data.url as string }));
+      setActiveVoice(voice);
+    } catch (err) {
+      setPodcastError((err as Error).message);
+    } finally {
+      setLoadingVoice(null);
+    }
+  }
+
+  const podcastUrl = activeVoice ? podcastUrls[activeVoice] : null;
+  // Giọng đang chọn (ở Cài đặt) đã phát sẵn chưa → ẩn nút, chỉ hiện player.
+  const currentVoicePlaying = activeVoice === podcastVoice && Boolean(podcastUrls[podcastVoice]);
 
   const isYouTube = article.source === "YouTube";
   // Link gốc dùng cho các mốc thời gian bấm được (chỉ bật với YouTube).
@@ -189,7 +228,7 @@ export default function ArticleCard({ article }: { article: FeedArticle }) {
           <button
             type="button"
             aria-label={bookmarked ? "Bỏ lưu bài viết" : "Lưu bài viết"}
-            onClick={() => setBookmarked(toggleBookmark(article.id))}
+            onClick={() => toggleBookmark(article.id)}
             className={`transition-colors ${bookmarked ? "text-accent" : "text-faint hover:text-ink"}`}
           >
             <BookmarkIcon filled={bookmarked} />
@@ -355,6 +394,13 @@ export default function ArticleCard({ article }: { article: FeedArticle }) {
         </div>
       )}
 
+      {/* Podcast: trình phát inline (hiện khi đã có URL — vừa sinh hoặc đã cache) */}
+      {podcastUrl && (
+        <div className="mt-3">
+          <audio key={activeVoice} controls src={podcastUrl} className="w-full" autoPlay preload="none" />
+        </div>
+      )}
+
       {/* Footer: tags + actions */}
       <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
         <div className="flex flex-wrap gap-2">
@@ -368,6 +414,18 @@ export default function ArticleCard({ article }: { article: FeedArticle }) {
             </Link>
           ))}
         </div>
+
+        {!currentVoicePlaying && (
+          <button
+            type="button"
+            onClick={() => loadPodcast(podcastVoice)}
+            disabled={loadingVoice !== null}
+            className="flex shrink-0 items-center gap-1 text-xs font-medium text-faint transition-colors hover:text-accent disabled:opacity-60"
+            title={podcastError ?? undefined}
+          >
+            {loadingVoice !== null ? "⏳ Đang tạo podcast…" : podcastError ? "🎧 Thử lại" : "🎧 Nghe podcast"}
+          </button>
+        )}
 
         <button
           type="button"

@@ -6,6 +6,7 @@ import BottomNav from "@/components/BottomNav";
 import ChatWidget from "@/components/ChatWidget";
 import { SearchProvider } from "@/components/SearchProvider";
 import { ChatProvider } from "@/components/ChatProvider";
+import { SettingsProvider } from "@/components/SettingsProvider";
 import {
   getAllArticles,
   filterArticles,
@@ -34,6 +35,7 @@ export default async function Home({
 
   return (
     <SearchProvider>
+     <SettingsProvider>
      <ChatProvider>
       <div className="min-h-screen bg-canvas text-ink">
         <Header
@@ -80,6 +82,7 @@ export default async function Home({
         <ChatWidget />
       </div>
      </ChatProvider>
+     </SettingsProvider>
     </SearchProvider>
   );
 }

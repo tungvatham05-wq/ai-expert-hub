@@ -2,6 +2,7 @@
 
 import { useState, type ReactNode } from "react";
 import { useSearch } from "@/components/SearchProvider";
+import SettingsMenu from "@/components/SettingsMenu";
 
 function MenuIcon() {
   return (
@@ -140,6 +141,9 @@ export default function Header({
               EN
             </button>
           </div>
+
+          {/* Cài đặt (chọn giọng podcast…) */}
+          <SettingsMenu />
 
           {/* Mobile: open right drawer (digest + trending) */}
           <button

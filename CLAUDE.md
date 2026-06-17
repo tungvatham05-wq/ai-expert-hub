@@ -39,6 +39,14 @@ Sidebar trượt từ phải để Admin hỏi đáp về bài đang đọc mà 
 - **LLM helper** `src/lib/chat.ts`: `generateChatReply()` (system prompt + ghép `original_content` của bài nếu phiên có `article_id`) và `generateSessionTitle()`.
 - **UI:** `ChatWidget.tsx` (slide-over: New Chat, Lịch sử, xoá phiên, màn nhập mật khẩu — lưu `localStorage`), `Markdown.tsx` (renderer tự viết, 0 dependency, an toàn XSS), `ChatProvider.tsx` (context; `ArticleCard` gọi `openForArticle({id,title})` để mở chat ghim bài).
 
+## Podcast (nghe bài dạng audio, 1 người dẫn; chọn giọng ở Cài đặt)
+Nút **"🎧 Nghe podcast"** (1 nút duy nhất) trên `ArticleCard` → phát inline bằng `<audio>` (autoPlay, `key={activeVoice}`). Giọng (Nam/Nữ) chọn ở **menu Cài đặt** (Header), áp dụng cho mọi bài. Kiến trúc **lazy generate + cache theo từng giọng**.
+- **API** `src/app/api/podcast/[articleId]/route.ts` (GET `?voice=male|female`, mặc định male): nếu cột tương ứng đã có URL → trả (cached); chưa có → sinh kịch bản → TTS mp3 đúng giọng → upload Storage → lưu cột → trả URL. `maxDuration = 60`. Next 16: `await ctx.params`.
+- **LLM helper** `src/lib/podcast.ts`: tái dùng `OPENAI_API_KEY` (KHÔNG key mới). `generatePodcastScript()` dùng `gpt-4o-mini` ra kịch bản monologue tiếng Việt (~250-450 từ, plain text); `synthesizePodcastAudio(script, voice)` dùng OpenAI TTS `gpt-4o-mini-tts` (`response_format: mp3`, ~4000 ký tự/lần). Voice: `male`→`onyx`, `female`→`coral` (`TTS_VOICE_IDS`); tông giọng theo `TTS_INSTRUCTIONS` (nữ: nhẹ nhàng, ngọt ngào). `normalizeVoice()` chuẩn hoá query. **Đổi voice id/instructions → phải null cột cache tương ứng để sinh lại.**
+- **Storage:** bucket `podcasts` (**public**), file `${articleId}.mp3` (nam) / `${articleId}-female.mp3` (nữ), upload `upsert: true` qua service role. Đọc công khai → `<audio>` phát thẳng URL, không cần signed URL.
+- **DB:** cột `articles.podcast_url` (nam) + `articles.podcast_url_female` (nữ) — migration `0003` & `0004`. `articles.ts` map → `FeedArticle.podcastUrl` / `podcastUrlFemale` để bài đã cache hiện player ngay. `ArticleCard` chỉ `import type { PodcastVoice }` để KHÔNG kéo OpenAI SDK vào client bundle.
+- **Cài đặt:** `SettingsProvider.tsx` (context, lưu `localStorage` key `aeh:podcast-voice`, mặc định `female`) bọc ở `page.tsx`; `SettingsMenu.tsx` (nút ⚙️ + dropdown chọn giọng) đặt trong `Header.tsx`. `ArticleCard` đọc `useSettings().podcastVoice`.
+
 ## Script tiện ích (`npx tsx --env-file=.env.local scripts/<x>.ts`)
 - `sync-youtube-test.ts` — sync thử chỉ các kênh YouTube.
 - `backfill-youtube-meta.ts` — điền duration/thumbnail cho video cũ.

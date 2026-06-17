@@ -130,6 +130,9 @@ export default function ChatWidget() {
   // clearPending() ngay sau khi nhận → effect không chạy lại (pending về null).
   useEffect(() => {
     if (!pending) return;
+    // Phản ứng MỘT LẦN với "lệnh" mở chat ghim bài (pending về null ngay sau đó), không phải
+    // vòng lặp render → suppress quy tắc set-state-in-effect ở đây là cố ý.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setBoundArticle(pending.article);
     setCurrentId(null);
     setMessages([]);

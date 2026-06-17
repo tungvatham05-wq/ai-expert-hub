@@ -21,6 +21,16 @@ export function getBookmarkIds(): Set<string> {
   return readIds();
 }
 
+// Đăng ký lắng nghe thay đổi bookmark (cho useSyncExternalStore).
+export function subscribeBookmarks(cb: () => void): () => void {
+  window.addEventListener(BOOKMARKS_EVENT, cb);
+  window.addEventListener("storage", cb);
+  return () => {
+    window.removeEventListener(BOOKMARKS_EVENT, cb);
+    window.removeEventListener("storage", cb);
+  };
+}
+
 export function isBookmarked(id: string): boolean {
   return readIds().has(id);
 }

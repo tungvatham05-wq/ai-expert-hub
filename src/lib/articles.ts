@@ -29,6 +29,9 @@ export interface FeedArticle {
   videoId: string | null;
   thumbnailUrl: string | null;
   durationSeconds: number | null;
+  // URL mp3 podcast đã sinh & cache theo giọng (null nếu chưa sinh) — nút "🎧 Nghe podcast".
+  podcastUrl: string | null; // giọng nam
+  podcastUrlFemale: string | null; // giọng nữ
 }
 
 export interface ExpertSummary {
@@ -125,6 +128,8 @@ interface ArticleRow {
   expert_id: string;
   thumbnail_url: string | null;
   duration_seconds: number | null;
+  podcast_url: string | null;
+  podcast_url_female: string | null;
   experts: { id: string; name: string; avatar_url: string | null } | null;
   article_tags: { tags: { name: string } | null }[];
   article_ai_tools: { ai_tools: { name: string } | null }[];
@@ -196,6 +201,8 @@ export async function getAllArticles(): Promise<FeedArticle[]> {
       expert_id,
       thumbnail_url,
       duration_seconds,
+      podcast_url,
+      podcast_url_female,
       experts ( id, name, avatar_url ),
       article_tags ( tags ( name ) ),
       article_ai_tools ( ai_tools ( name ) )
@@ -235,6 +242,8 @@ export async function getAllArticles(): Promise<FeedArticle[]> {
       videoId: platform === "YouTube" ? extractVideoId(row.source_url) : null,
       thumbnailUrl: row.thumbnail_url,
       durationSeconds: row.duration_seconds,
+      podcastUrl: row.podcast_url,
+      podcastUrlFemale: row.podcast_url_female,
     };
   });
 }
